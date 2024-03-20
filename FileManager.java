@@ -244,5 +244,8 @@ public class FileManager {
         return amount;
     }
 
+    public long getFilePointerPosition() throws Exception{
+        return raf.getFilePointer();
+    }
 
 }
