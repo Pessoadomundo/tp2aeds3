@@ -99,6 +99,7 @@ public class Pagina {
             
             int indiceMeio = this.qtdElementos / 2;
             Pagina novaPagina = new Pagina(ordem);
+            novaPagina.pos = (int)raf.length();
             novaPagina.isFolha = true;
             novaPagina.qtdElementos = (short)(this.qtdElementos - indiceMeio);
             for(int i = 0; i < novaPagina.qtdElementos; i++){
@@ -106,6 +107,7 @@ public class Pagina {
                 novaPagina.posicoes[i] = this.posicoes[indiceMeio + i];
             }
             this.qtdElementos = (short)indiceMeio;
+            raf.seek(novaPagina.pos);
             novaPagina.salvar(raf, ordem);
             this.salvar(raf, ordem);
             long[] ret = new long[2];
