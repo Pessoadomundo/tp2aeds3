@@ -12,7 +12,7 @@ public class testes {
             penis.close();
             ArvoreBMais arvore = new ArvoreBMais("arvore.dat", 3);
             fm.resetPosition();
-            for(int i=0;i<10;i++){
+            for(int i=0;i<3;i++){
                 long pos = fm.getFilePointerPosition();
                 Produto produto = fm.readElement();
                 int id = produto.getId();

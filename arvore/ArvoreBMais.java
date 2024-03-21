@@ -43,14 +43,31 @@ public class ArvoreBMais {
 
         raf.seek(enderecoRaiz);
         Pagina raiz = new Pagina(raf, ordem);
-        raiz = raiz.inserir(id, pos, raf, ordem);
+        long[] res = raiz.inserir(id, pos, raf, ordem);
 
+        if(res == null){
+            return raiz;
+        }
+
+        Pagina novaPagina = new Pagina(ordem);
+        novaPagina.ids[0] = (int)res[0];
+        novaPagina.posicoes[0] = res[1];
+        novaPagina.qtdElementos++;
+        novaPagina.isFolha = false;
+        novaPagina.filhos[0] = enderecoRaiz;
+        novaPagina.filhos[1] = (int)raf.length();
+        novaPagina.pos = (int)raf.length();
+        raf.seek(novaPagina.pos);
+        novaPagina.salvar(raf, ordem);
         raf.seek(0);
-        raf.writeInt(raiz.pos);
-        return raiz;
+        raf.writeInt(novaPagina.pos);
+
+        return novaPagina;
     }
 
     public void print() throws Exception{
+        System.out.println("\nRaiz: " + enderecoRaiz);
+        System.out.println();
         raf.seek(4);
         while(raf.getFilePointer() < raf.length()){
             Pagina pagina = new Pagina(raf, ordem);

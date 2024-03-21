@@ -79,7 +79,7 @@ public class Pagina {
         }
     }
 
-    public Pagina inserir(int id, long pos, RandomAccessFile raf, int ordem) throws Exception{
+    public long[] inserir(int id, long pos, RandomAccessFile raf, int ordem) throws Exception{
         if(this.isFolha){
             if(this.qtdElementos < ordem - 1){
                 int i = 0;
@@ -94,21 +94,24 @@ public class Pagina {
                 this.posicoes[i] = pos;
                 this.qtdElementos++;
                 this.salvar(raf, ordem);
-                return this;
+                return null;
             }
+            
+            int indiceMeio = this.qtdElementos / 2;
             Pagina novaPagina = new Pagina(ordem);
-            novaPagina.pos = (int)raf.length();
             novaPagina.isFolha = true;
-            novaPagina.qtdElementos = (short)(ordem/2);
-            for(int i = 0; i < ordem/2; i++){
-                novaPagina.ids[i] = this.ids[i + ordem/2];
-                novaPagina.posicoes[i] = this.posicoes[i + ordem/2];
+            novaPagina.qtdElementos = (short)(this.qtdElementos - indiceMeio);
+            for(int i = 0; i < novaPagina.qtdElementos; i++){
+                novaPagina.ids[i] = this.ids[indiceMeio + i];
+                novaPagina.posicoes[i] = this.posicoes[indiceMeio + i];
             }
-            this.qtdElementos = (short)(ordem/2);
-            this.salvar(raf, ordem);
-            raf.seek(novaPagina.pos);
+            this.qtdElementos = (short)indiceMeio;
             novaPagina.salvar(raf, ordem);
-            return novaPagina;
+            this.salvar(raf, ordem);
+            long[] ret = new long[2];
+            ret[0] = novaPagina.ids[0];
+            ret[1] = novaPagina.pos;
+            return ret;
         }
 
         int i = 0;
@@ -117,8 +120,8 @@ public class Pagina {
         }
         raf.seek(this.filhos[i]);
         Pagina pagina = new Pagina(raf, ordem);
-        pagina = pagina.inserir(id, pos, raf, ordem);
-        if(pagina == null){
+        long[] res = pagina.inserir(id, pos, raf, ordem);
+        if(res == null){
             return null;
         }
         if(this.qtdElementos < ordem - 1){
@@ -130,18 +133,25 @@ public class Pagina {
             this.filhos[i+1] = pagina.pos;
             this.qtdElementos++;
             this.salvar(raf, ordem);
-            return this;
+            return null;
         }
+        
+        int indiceMeio = this.qtdElementos / 2;
         Pagina novaPagina = new Pagina(ordem);
-        novaPagina.pos = (int)raf.length();
         novaPagina.isFolha = false;
-        novaPagina.qtdElementos = 1;
-        novaPagina.ids[0] = pagina.ids[0];
-        novaPagina.filhos[0] = this.pos;
-        novaPagina.filhos[1] = pagina.pos;
-        raf.seek(novaPagina.pos);
+        novaPagina.qtdElementos = (short)(this.qtdElementos - indiceMeio - 1);
+        for(int j = 0; j < novaPagina.qtdElementos; j++){
+            novaPagina.ids[j] = this.ids[indiceMeio + j + 1];
+            novaPagina.filhos[j] = this.filhos[indiceMeio + j + 1];
+        }
+        novaPagina.filhos[novaPagina.qtdElementos] = this.filhos[this.qtdElementos];
+        this.qtdElementos = (short)indiceMeio;
         novaPagina.salvar(raf, ordem);
-        return novaPagina;
+        this.salvar(raf, ordem);
+        long[] ret = new long[2];
+        ret[0] = novaPagina.ids[0];
+        ret[1] = novaPagina.pos;
+        return ret;
     }
 
     public String toString(){
@@ -153,17 +163,17 @@ public class Pagina {
         str += "QtdElementos: " + this.qtdElementos + "\n";
         str += "Filhos: ";
         for(int i = 0; i < this.filhos.length; i++){
-            str += this.filhos[i] + " ";
+            if(this.filhos[i]!=-1) str += this.filhos[i] + " ";
         }
         str += "\n";
         str += "Ids: ";
         for(int i = 0; i < this.ids.length; i++){
-            str += this.ids[i] + " ";
+            if(this.ids[i]!=-1) str += this.ids[i] + " ";
         }
         str += "\n";
         str += "Posicoes: ";
         for(int i = 0; i < this.posicoes.length; i++){
-            str += this.posicoes[i] + " ";
+            if(this.posicoes[i]!=-1) str += this.posicoes[i] + " ";
         }
         str += "\n";
         return str;
