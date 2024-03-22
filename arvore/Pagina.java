@@ -79,6 +79,40 @@ public class Pagina {
         }
     }
 
+    public static void splitPagina(Pagina pai, Pagina filho){
+        int indiceMeio = pai.qtdElementos / 2;
+        Pagina novaPagina = new Pagina(pai.filhos.length);
+        novaPagina.isFolha = filho.isFolha;
+        novaPagina.qtdElementos = (short)(pai.qtdElementos - indiceMeio - 1);
+        for(int i = 0; i < novaPagina.qtdElementos; i++){
+            novaPagina.ids[i] = pai.ids[indiceMeio + i + 1];
+            novaPagina.posicoes[i] = pai.posicoes[indiceMeio + i + 1];
+        }
+        if(!filho.isFolha){
+            for(int i = 0; i <= novaPagina.qtdElementos; i++){
+                novaPagina.filhos[i] = pai.filhos[indiceMeio + i + 1];
+            }
+        }
+        pai.qtdElementos = (short)indiceMeio;
+        for(int i = pai.qtdElementos; i < pai.filhos.length; i++){
+            pai.filhos[i] = -1;
+        }
+        for(int i = pai.qtdElementos; i < pai.ids.length; i++){
+            pai.ids[i] = -1;
+            pai.posicoes[i] = -1;
+        }
+        for(int i = pai.qtdElementos; i < novaPagina.filhos.length; i++){
+            novaPagina.filhos[i] = -1;
+        }
+        if(pai.isFolha){
+            novaPagina.left = filho.pos;
+            novaPagina.right = filho.right;
+            filho.right = novaPagina.pos;
+        }
+    }
+
+
+
     public long[] inserir(int id, long pos, RandomAccessFile raf, int ordem) throws Exception{
         if(this.isFolha){
             if(this.qtdElementos < ordem - 1){
@@ -97,23 +131,7 @@ public class Pagina {
                 return null;
             }
             
-            int indiceMeio = this.qtdElementos / 2;
-            Pagina novaPagina = new Pagina(ordem);
-            novaPagina.pos = (int)raf.length();
-            novaPagina.isFolha = true;
-            novaPagina.qtdElementos = (short)(this.qtdElementos - indiceMeio);
-            for(int i = 0; i < novaPagina.qtdElementos; i++){
-                novaPagina.ids[i] = this.ids[indiceMeio + i];
-                novaPagina.posicoes[i] = this.posicoes[indiceMeio + i];
-            }
-            this.qtdElementos = (short)indiceMeio;
-            raf.seek(novaPagina.pos);
-            novaPagina.salvar(raf, ordem);
-            this.salvar(raf, ordem);
-            long[] ret = new long[2];
-            ret[0] = novaPagina.ids[0];
-            ret[1] = novaPagina.pos;
-            return ret;
+            
         }
 
         int i = 0;

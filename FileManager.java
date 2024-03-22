@@ -1,5 +1,7 @@
 import java.io.RandomAccessFile;
-import java.util.function.Predicate; 
+import java.util.function.Predicate;
+
+import hash.HashExtensivel; 
 
 public class FileManager {
     private RandomAccessFile raf;
@@ -248,4 +250,25 @@ public class FileManager {
         return raf.getFilePointer();
     }
 
+    public HashExtensivel createHashExtensivel(int pInicial, int bucketSize) throws Exception{
+        HashExtensivel he = new HashExtensivel("hash.dat", "indice.dat", pInicial, bucketSize);
+        raf.seek(4);
+        while(raf.getFilePointer() < raf.length()){
+            long pos = raf.getFilePointer();
+            Produto p = readElement();
+            he.inserir(p.getId(), pos);
+        }
+
+        return he;
+    }
+
+    public Produto findProdutoUsingHash(HashExtensivel he, int id) throws Exception{
+        long pos = he.pesquisar(id);
+        if(pos == -1){
+            return null;
+        }
+
+        raf.seek(pos);
+        return readElement();
+    }
 }
