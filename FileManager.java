@@ -5,9 +5,11 @@ import hash.HashExtensivel;
 
 public class FileManager {
     private RandomAccessFile raf;
+    private HashExtensivel he;
 
     public FileManager(){
         this.raf = null;
+        he = null;
     }
 
     public FileManager(String path) throws Exception{
@@ -19,6 +21,7 @@ public class FileManager {
      */
     public void start(String path) throws Exception{
         this.raf = new RandomAccessFile(path, "rw");
+        this.he = new HashExtensivel("hash.dat", "indice.dat", 1, 60);
         raf.setLength(0);
         raf.seek(0);
         raf.writeInt(0);
@@ -31,6 +34,7 @@ public class FileManager {
      */
     public void loadFile(String path) throws Exception{
         this.raf = new RandomAccessFile(path, "rw");
+        this.he = new HashExtensivel("hash.dat", "indice.dat");
     }
 
     /**
@@ -80,11 +84,17 @@ public class FileManager {
         
         p.setId(lastId+1);
 
-        raf.seek(raf.length());
+        long pos = raf.length();
+
+        raf.seek(pos);
         raf.write(p.toByteArray());
 
         raf.seek(0);
         raf.writeInt(lastId+1);
+
+
+        System.out.println(p.getId());
+        he.inserir(p.getId(), pos);
 
         return lastId+1;
     }
@@ -96,13 +106,11 @@ public class FileManager {
      * @throws Exception
      */
     public Produto readElement(int id) throws Exception{
-        raf.seek(0);
-        raf.readInt();
-        while(raf.getFilePointer() < raf.length()){
-            Produto p = readElement();
-            if(p.getId() == id && p.getAlive()){
-                return p;
-            }
+        long pos = he.pesquisar(id);
+        System.out.println(pos);
+        if(pos != -1){
+            raf.seek(pos);
+            return readElement();
         }
 
         return null;
@@ -131,6 +139,7 @@ public class FileManager {
             Produto p = readElement();
             if(p.getId() == id){
                 p.setAlive(false);
+                he.remover(id);
                 raf.seek(pos);
                 raf.write(p.toByteArray());
                 return true;
@@ -250,16 +259,13 @@ public class FileManager {
         return raf.getFilePointer();
     }
 
-    public HashExtensivel createHashExtensivel(int pInicial, int bucketSize) throws Exception{
-        HashExtensivel he = new HashExtensivel("hash.dat", "indice.dat", pInicial, bucketSize);
+    public void fillHashExtensivel() throws Exception{
         raf.seek(4);
         while(raf.getFilePointer() < raf.length()){
             long pos = raf.getFilePointer();
             Produto p = readElement();
             he.inserir(p.getId(), pos);
         }
-
-        return he;
     }
 
     public Produto findProdutoUsingHash(HashExtensivel he, int id) throws Exception{

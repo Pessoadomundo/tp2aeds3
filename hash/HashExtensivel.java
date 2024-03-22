@@ -5,8 +5,16 @@ import java.io.RandomAccessFile;
 public class HashExtensivel {
     RandomAccessFile hashRaf;
     RandomAccessFile indiceRaf;
-    int p;
-    int bucketSize;
+    int p = -1;
+    int bucketSize = -1;
+
+    public int getP(){
+        return p;
+    }
+
+    public int getBucketSize(){
+        return bucketSize;
+    }
 
     public HashExtensivel(String hashArq, String indiceArq, int pInicial, int bucketSize) throws Exception{
         this.hashRaf = new RandomAccessFile(hashArq, "rw");

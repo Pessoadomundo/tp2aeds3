@@ -8,8 +8,8 @@ public class testes {
         try{
             FileManager fm = new FileManager();
             fm.loadFile("data.dat");
-            HashExtensivel he = fm.createHashExtensivel(1, 50);
-            System.out.println(fm.findProdutoUsingHash(he, 2323));
+            //fm.fillHashExtensivel();
+            System.out.println(fm.readElement(2323));
         }catch(Exception e){
             e.printStackTrace();
         }
