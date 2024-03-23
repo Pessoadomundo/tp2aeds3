@@ -286,4 +286,93 @@ public class Util {
     Produto p = new Produto(bArr);
     return p;
   }
+
+  public static Produto[] quicksort(Produto[] arr){
+    quicksort(arr, 0, arr.length - 1);
+    return arr;
+  }
+
+  public static void quicksort(Produto[] arr, int esq, int dir){
+    if(esq < dir){
+      int p = partition(arr, esq, dir);
+      quicksort(arr, esq, p - 1);
+      quicksort(arr, p + 1, dir);
+    }
+  }
+
+  public static int partition(Produto[] arr, int esq, int dir){
+    Produto pivot = arr[dir];
+    int i = esq - 1;
+    for(int j = esq; j < dir; j++){
+      if(arr[j].getId() < pivot.getId()){
+        i++;
+        Produto temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+      }
+    }
+    Produto temp = arr[i + 1];
+    arr[i + 1] = arr[dir];
+    arr[dir] = temp;
+    return i + 1;
+  }
+
+  public static Produto[] mergeArrays(Produto[] arr1, Produto[] arr2, boolean inclusive){
+    //retorna um array de produtos que é a união dos arrays arr1 e arr2 caso inclusive seja true
+    //ou a interseção dos arrays arr1 e arr2 caso inclusive seja false
+    //remover duplicatas
+    //retornar array ordenado
+    Produto[] res = new Produto[arr1.length + arr2.length];
+    arr1 = quicksort(arr1);
+    arr2 = quicksort(arr2);
+
+    if(inclusive){
+      int i = 0;
+      int j = 0;
+      int k = 0;
+      while(i < arr1.length && j < arr2.length){
+        if(arr1[i].getId() < arr2[j].getId()){
+          res[k] = arr1[i];
+          i++;
+        }else if(arr1[i].getId() > arr2[j].getId()){
+          res[k] = arr2[j];
+          j++;
+        }else{
+          res[k] = arr1[i];
+          i++;
+          j++;
+        }
+        k++;
+      }
+      while(i < arr1.length){
+        res[k] = arr1[i];
+        i++;
+        k++;
+      }
+      while(j < arr2.length){
+        res[k] = arr2[j];
+        j++;
+        k++;
+      }
+      return removeEndingNulls(res);
+    }else{
+      int i = 0;
+      int j = 0;
+      int k = 0;
+      while(i < arr1.length && j < arr2.length){
+        if(arr1[i].getId() < arr2[j].getId()){
+          i++;
+        }else if(arr1[i].getId() > arr2[j].getId()){
+          j++;
+        }else{
+          res[k] = arr1[i];
+          i++;
+          j++;
+          k++;
+        }
+      }
+      return removeEndingNulls(res);
+    }
+    
+  }
 }

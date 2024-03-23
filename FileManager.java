@@ -1,19 +1,27 @@
 import java.io.RandomAccessFile;
 import java.util.function.Predicate;
 
-import hash.HashExtensivel; 
+import hash.HashExtensivel;
+import listaInvertida.ListaInvertida; 
 
 public class FileManager {
     private RandomAccessFile raf;
     private HashExtensivel he;
+    private ListaInvertida li1;
+    private ListaInvertida li2;
 
     public FileManager(){
         this.raf = null;
         he = null;
+        li1 = null;
+        li2 = null;
     }
 
     public FileManager(String path) throws Exception{
         this.start(path);
+        he = new HashExtensivel("hash.dat", "indice.dat", 1, 60);
+        li1 = new ListaInvertida("li1.dat", 30);
+        li2 = new ListaInvertida("li2.dat", 30);
     }
 
     /**
@@ -22,6 +30,10 @@ public class FileManager {
     public void start(String path) throws Exception{
         this.raf = new RandomAccessFile(path, "rw");
         this.he = new HashExtensivel("hash.dat", "indice.dat", 1, 60);
+        this.li1 = new ListaInvertida();
+        this.li2 = new ListaInvertida();
+        this.li1.start("li1.dat", 30);
+        this.li2.start("li2.dat", 30);
         raf.setLength(0);
         raf.seek(0);
         raf.writeInt(0);
@@ -35,6 +47,8 @@ public class FileManager {
     public void loadFile(String path) throws Exception{
         this.raf = new RandomAccessFile(path, "rw");
         this.he = new HashExtensivel("hash.dat", "indice.dat");
+        this.li1 = new ListaInvertida("li1.dat", 30);
+        this.li2 = new ListaInvertida("li2.dat", 30);
     }
 
     /**
@@ -96,6 +110,9 @@ public class FileManager {
         System.out.println(p.getId());
         he.inserir(p.getId(), pos);
 
+        li1.inserirProduto(p.getId(), p.getName());
+        li2.inserirProduto(p.getId(), p.getTerms());
+
         return lastId+1;
     }
     
@@ -140,6 +157,8 @@ public class FileManager {
             if(p.getId() == id){
                 p.setAlive(false);
                 he.remover(id);
+                li1.removerProduto(id, p.getName());
+                li2.removerProduto(id, p.getTerms());
                 raf.seek(pos);
                 raf.write(p.toByteArray());
                 return true;
@@ -164,6 +183,10 @@ public class FileManager {
             pos = raf.getFilePointer();
             Produto p2 = readElement();
             if(p2.getId() == p.getId() && p2.getAlive()){
+                li1.removerProduto(p.getId(), p2.getName());
+                li2.removerProduto(p.getId(), p2.getTerms());
+                li1.inserirProduto(p.getId(), p.getName());
+                li2.inserirProduto(p.getId(), p.getTerms());
                 byte[] bArr = p.toByteArray();
                 int len = bArr.length;
                 raf.seek(pos+1);
@@ -276,5 +299,66 @@ public class FileManager {
 
         raf.seek(pos);
         return readElement();
+    }
+
+    public Produto[] findProdutosByTitle(String title, boolean inclusive) throws Exception{
+        String[] terms = title.split(" ");
+        int[] ids = new int[1000];
+        int count = 0;
+        if(inclusive){
+            for(String term:terms){
+                int[] res = li1.buscar(term);
+                for(int i=0;i<res.length;i++){
+                    if(res[i] != 0){
+                        ids[count] = res[i];
+                        count++;
+                    }
+                }
+            }
+        }else{
+            int[] res = li1.buscar(terms[0]);
+            for(int i=0;i<res.length;i++){
+                if(res[i] == 0){
+                    continue;
+                }
+
+                boolean found = true;
+                for(int j=1;j<terms.length;j++){
+                    int[] res2 = li1.buscar(terms[j]);
+                    boolean found2 = false;
+                    for(int k=0;k<res2.length;k++){
+                        if(res2[k] == res[i]){
+                            found2 = true;
+                            break;
+                        }
+                    }
+
+                    if(!found2){
+                        found = false;
+                        break;
+                    }
+                }
+
+                if(found){
+                    ids[count] = res[i];
+                    count++;
+                }
+            }
+        }
+
+        Produto[] res = new Produto[count];
+        for(int i=0;i<count;i++){
+            res[i] = findProdutoUsingHash(he, ids[i]);
+        }
+        return res;
+    }
+
+    public Produto[] findProdutosByCategory(String category) throws Exception{
+        int[] ids = li2.buscar(category);
+        Produto[] res = new Produto[ids.length];
+        for(int i=0;i<ids.length;i++){
+            res[i] = findProdutoUsingHash(he, ids[i]);
+        }
+        return res;
     }
 }

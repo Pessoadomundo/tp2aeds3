@@ -206,12 +206,13 @@ public class JQL {
     while (nextAction != 6) {
       System.out.println(
         "Qual será a próxima ação?\n" +
-        "1 - Pesquisar produtos\n" +
+        "1 - Pesquisa avançada\n" +
         "2 - Adicionar produtos\n" +
         "3 - Ordenar produtos\n" +
         "4 - Excluir produto\n" +
         "5 - Atualizar produto\n" +
-        "6 - Parar"
+        "6 - Pesquisar produtos\n" +
+        "7 - Parar"
       );
 
       nextAction = Integer.parseInt(sc.nextLine());
@@ -401,6 +402,41 @@ public class JQL {
 
           break;
         case 6:
+          //se inclusivo, retorna a união dos dois arrays, se exclusivo, retorna a interseção
+          //se produtos1 for null, retorna produtos2
+          //se produtos2 for null, retorna produtos1
+          //se ambos forem null, retorna null
+          //remover produtos duplicados em todos os casos ao final
+          System.out.println("Quais termos devem estar no titulo?");
+          String titulo = sc.nextLine();
+          System.out.println("Qual termo deve estar na categoria do produto?");
+          String category = sc.nextLine();
+          System.out.println("Busca deve ser inclusiva ou exclusiva? (1/0)");
+          boolean inclusivo = sc.nextLine().equals("1");
+          Produto[] produtos1 = fm.findProdutosByTitle(titulo, inclusivo);
+          
+          
+          Produto[] produtos2 = fm.findProdutosByCategory(category);
+
+          Produto[] res2 = Util.mergeArrays(produtos1, produtos2, inclusivo);
+
+          boolean foundOne2 = false;
+
+          System.out.println("\nResultados:\n\n");
+
+          for (Produto p1 : res2) {
+            if (p1 != null) {
+              System.out.println(p1.toString() + "\n\n");
+              foundOne2 = true;
+            }
+          }
+
+          if (!foundOne2) {
+            System.out.println("Nenhum produto encontrado\n\n");
+          }
+          
+          break;
+          case 7:
           fm.close();
           break;
         default:
