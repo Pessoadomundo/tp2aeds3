@@ -1,4 +1,3 @@
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
@@ -13,71 +12,61 @@ class ParIdEndereco {
     }
 }
 
-class NoArvoreB {
-    static final int TAMANHO_REGISTRO = 2048;
-    static final int TAMANHO_PAR = 12;
-    static final int TAMANHO_PONTEIRO = 8;
+class Pagina {
+    static final int TAMANHO_PAGINA = 2048; // Tamanho máximo de uma página em bytes
+    static final int TAMANHO_REGISTRO = 12; // Tamanho de um par de valores (id e endereço) em bytes
+    static final int ORDEM = 8; // Ordem da árvore B
 
-    ArrayList<ParIdEndereco> pares;
-    long proximoNo;
+    ArrayList<ParIdEndereco> registros;
 
-    public NoArvoreB() {
-        pares = new ArrayList<>();
-        proximoNo = -1;
+    public Pagina() {
+        registros = new ArrayList<>();
     }
 
     public byte[] toByteArray() {
-        byte[] byteArray = new byte[TAMANHO_REGISTRO];
+        byte[] byteArray = new byte[TAMANHO_PAGINA];
         int offset = 0;
 
-        for (ParIdEndereco par : pares) {
-            byte[] idBytes = intToBytes(par.id);
-            byte[] enderecoBytes = longToBytes(par.enderecoArquivo);
+        for (ParIdEndereco registro : registros) {
+            byte[] idBytes = intToBytes(registro.id);
+            byte[] enderecoBytes = longToBytes(registro.enderecoArquivo);
 
-            System.arraycopy(idBytes, 0, byteArray, offset, TAMANHO_PAR / 2);
-            System.arraycopy(enderecoBytes, 0, byteArray, offset + TAMANHO_PAR / 2, TAMANHO_PAR / 2);
+            System.arraycopy(idBytes, 0, byteArray, offset, TAMANHO_REGISTRO / 2);
+            System.arraycopy(enderecoBytes, 0, byteArray, offset + TAMANHO_REGISTRO / 2, TAMANHO_REGISTRO / 2);
 
-            offset += TAMANHO_PAR;
+            offset += TAMANHO_REGISTRO;
         }
-
-        byte[] proximoNoBytes = longToBytes(proximoNo);
-        System.arraycopy(proximoNoBytes, 0, byteArray, TAMANHO_REGISTRO - TAMANHO_PONTEIRO, TAMANHO_PONTEIRO);
 
         return byteArray;
     }
 
-    public static NoArvoreB fromByteArray(byte[] byteArray) {
-        NoArvoreB no = new NoArvoreB();
+    public static Pagina fromByteArray(byte[] byteArray) {
+        Pagina pagina = new Pagina();
         int offset = 0;
 
-        while (offset < byteArray.length - TAMANHO_PONTEIRO) {
-            byte[] idBytes = new byte[TAMANHO_PAR / 2];
-            byte[] enderecoBytes = new byte[TAMANHO_PAR / 2];
+        while (offset < byteArray.length) {
+            byte[] idBytes = new byte[TAMANHO_REGISTRO / 2];
+            byte[] enderecoBytes = new byte[TAMANHO_REGISTRO / 2];
 
-            System.arraycopy(byteArray, offset, idBytes, 0, TAMANHO_PAR / 2);
-            System.arraycopy(byteArray, offset + TAMANHO_PAR / 2, enderecoBytes, 0, TAMANHO_PAR / 2);
+            System.arraycopy(byteArray, offset, idBytes, 0, TAMANHO_REGISTRO / 2);
+            System.arraycopy(byteArray, offset + TAMANHO_REGISTRO / 2, enderecoBytes, 0, TAMANHO_REGISTRO / 2);
 
             int id = bytesToInt(idBytes);
             long endereco = bytesToLong(enderecoBytes);
 
-            no.pares.add(new ParIdEndereco(id, endereco));
-            offset += TAMANHO_PAR;
+            pagina.registros.add(new ParIdEndereco(id, endereco));
+            offset += TAMANHO_REGISTRO;
         }
 
-        byte[] proximoNoBytes = new byte[TAMANHO_PONTEIRO];
-        System.arraycopy(byteArray, TAMANHO_REGISTRO - TAMANHO_PONTEIRO, proximoNoBytes, 0, TAMANHO_PONTEIRO);
-
-        no.proximoNo = bytesToLong(proximoNoBytes);
-
-        return no;
+        return pagina;
     }
 
     private static byte[] intToBytes(int value) {
-        return new byte[] {
+        return new byte[]{
                 (byte) (value >>> 24),
                 (byte) (value >>> 16),
                 (byte) (value >>> 8),
-                (byte) value };
+                (byte) value};
     }
 
     private static int bytesToInt(byte[] bytes) {
@@ -88,7 +77,7 @@ class NoArvoreB {
     }
 
     private static byte[] longToBytes(long value) {
-        return new byte[] {
+        return new byte[]{
                 (byte) (value >>> 56),
                 (byte) (value >>> 48),
                 (byte) (value >>> 40),
@@ -96,7 +85,7 @@ class NoArvoreB {
                 (byte) (value >>> 24),
                 (byte) (value >>> 16),
                 (byte) (value >>> 8),
-                (byte) value };
+                (byte) value};
     }
 
     private static long bytesToLong(byte[] bytes) {
@@ -116,72 +105,87 @@ public class ArvoreB {
 
     private RandomAccessFile arquivo;
 
-    public ArvoreB() throws FileNotFoundException {
+    public ArvoreB() throws IOException {
         arquivo = new RandomAccessFile(NOME_ARQUIVO, "rw");
+        if (arquivo.length() == 0) {
+            // Se o arquivo estiver vazio, cria uma página vazia como nó raiz
+            Pagina paginaVazia = new Pagina();
+            try {
+                arquivo.write(paginaVazia.toByteArray());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void inserir(int id, long endereco) throws IOException {
-        NoArvoreB noAtual = lerNo(0);
+        long enderecoAtual = 0; // Começa na raiz
 
         while (true) {
-            if (noAtual.pares.size() < 7) {
+            Pagina paginaAtual = lerPagina(enderecoAtual);
 
+            if (paginaAtual.registros.size() < Pagina.ORDEM - 1) { // Ordem da árvore é fixa em 8
+                // Inserção na página atual
                 int indice = 0;
-                while (indice < noAtual.pares.size() && id > noAtual.pares.get(indice).id) {
+                while (indice < paginaAtual.registros.size() && id > paginaAtual.registros.get(indice).id) {
                     indice++;
                 }
-                noAtual.pares.add(indice, new ParIdEndereco(id, endereco));
-                escreverNo(noAtual);
+                paginaAtual.registros.add(indice, new ParIdEndereco(id, endereco));
+                escreverPagina(enderecoAtual, paginaAtual);
                 break;
             } else {
+                // Dividir a página atual
+                Pagina novaPagina = new Pagina();
+                novaPagina.registros.addAll(paginaAtual.registros.subList(4, 7)); // Ordem da árvore é fixa em 8, então 4 é o meio
+                paginaAtual.registros.subList(4, 7).clear(); // Ordem da árvore é fixa em 8, então 4 é o meio
 
-                NoArvoreB novoNo = new NoArvoreB();
-                novoNo.pares.addAll(noAtual.pares.subList(4, 7));
-                noAtual.pares.subList(4, 7).clear();
+                escreverPagina(enderecoAtual, paginaAtual);
 
-                novoNo.proximoNo = noAtual.proximoNo;
-                noAtual.proximoNo = arquivo.length();
-                escreverNo(noAtual);
-                escreverNo(novoNo);
+                long enderecoNovaPagina = arquivo.length(); // Adiciona a nova página no final do arquivo
+                escreverPagina(enderecoNovaPagina, novaPagina);
 
-                if (id < noAtual.pares.get(4).id) {
-                    noAtual = novoNo;
+                // Atualiza o próximo nó da página atual para apontar para a nova página
+                paginaAtual.registros.get(3).enderecoArquivo = enderecoNovaPagina;
+                escreverPagina(enderecoAtual, paginaAtual);
+
+                // Verifica se precisa subir um nível na árvore
+                if (id < paginaAtual.registros.get(4).id) { // Ordem da árvore é fixa em 8, então 4 é o meio
+                    enderecoAtual = enderecoNovaPagina;
                 } else {
-                    noAtual = lerNo(noAtual.proximoNo);
+                    enderecoAtual = paginaAtual.registros.get(3).enderecoArquivo;
                 }
             }
         }
     }
 
     public boolean buscar(int id) throws IOException {
-        NoArvoreB noAtual = lerNo(0);
+        long enderecoAtual = 0; // Começa na raiz
 
-        while (noAtual != null) {
+        while (enderecoAtual != -1) {
+            Pagina paginaAtual = lerPagina(enderecoAtual);
+
             int indice = 0;
-            while (indice < noAtual.pares.size() && id > noAtual.pares.get(indice).id) {
+            while (indice < paginaAtual.registros.size() && id > paginaAtual.registros.get(indice).id) {
                 indice++;
             }
-            if (indice < noAtual.pares.size() && id == noAtual.pares.get(indice).id) {
+            if (indice < paginaAtual.registros.size() && id == paginaAtual.registros.get(indice).id) {
                 return true;
             }
-            noAtual = noAtual.proximoNo != -1 ? lerNo(noAtual.proximoNo) : null;
+            enderecoAtual = indice < paginaAtual.registros.size() ? paginaAtual.registros.get(indice).enderecoArquivo : -1;
         }
         return false;
     }
 
-    private void escreverNo(NoArvoreB no) throws IOException {
-        arquivo.seek(arquivo.length());
-        arquivo.write(no.toByteArray());
+    private void escreverPagina(long endereco, Pagina pagina) throws IOException {
+        arquivo.seek(endereco);
+        arquivo.write(pagina.toByteArray());
     }
 
-    private NoArvoreB lerNo(long endereco) throws IOException {
-        if (endereco == -1) {
-            return null;
-        }
+    private Pagina lerPagina(long endereco) throws IOException {
         arquivo.seek(endereco);
-        byte[] byteArray = new byte[NoArvoreB.TAMANHO_REGISTRO];
+        byte[] byteArray = new byte[Pagina.TAMANHO_PAGINA];
         arquivo.read(byteArray);
-        return NoArvoreB.fromByteArray(byteArray);
+        return Pagina.fromByteArray(byteArray);
     }
 
     public static void main(String[] args) {
@@ -207,10 +211,10 @@ public class ArvoreB {
             arvoreB.inserir(20, 18000);
             arvoreB.inserir(22, 19000);
             arvoreB.inserir(2, 20000);
-            System.out.println(arvoreB.buscar(20));
-            System.out.println(arvoreB.buscar(21));
-            System.out.println(arvoreB.buscar(5));
-            System.out.println(arvoreB.buscar(0));
+            System.out.println(arvoreB.buscar(20)); // Saída: true
+            System.out.println(arvoreB.buscar(21)); // Saída: true
+            System.out.println(arvoreB.buscar(5));  // Saída: true
+            System.out.println(arvoreB.buscar(0));  // Saída: false
         } catch (IOException e) {
             e.printStackTrace();
         }
