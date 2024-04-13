@@ -1,201 +1,139 @@
 package arvore;
 
-import java.io.RandomAccessFile;
-import java.util.Random;
-import java.util.RandomAccess;
-
-public class Pagina {
+//ordem 8
+public class Pagina{
+    byte nElementos;
     boolean isFolha;
-    int pos;
-    int left;
-    int right;
-    short qtdElementos;
-    int[] filhos;
-    int[] ids;
+    int[] chaves;
     long[] posicoes;
+    long[] filhos;
 
-    public Pagina(int ordem) {
+    public Pagina(){
+        nElementos = 0;
         isFolha = true;
-        pos = -1;
-        left = -1;
-        right = -1;
-        qtdElementos = 0;
-        ids = new int[ordem - 1];
-        posicoes = new long[ordem - 1];
-        filhos = new int[ordem];
-        for(int i = 0; i < ordem; i++) {
-            filhos[i] = -1;
-        }
-        for(int i = 0; i < ordem - 1; i++) {
-            ids[i] = -1;
-            posicoes[i] = -1;
-        }
+        chaves = new int[7];
+        posicoes = new long[7];
+        filhos = new long[8];
     }
 
-    public Pagina(RandomAccessFile raf, int ordem) throws Exception{
-        this.filhos = new int[ordem];
-        this.ids = new int[ordem - 1];
-        this.posicoes = new long[ordem - 1];
-        
-        this.pos = (int) raf.getFilePointer();    
-        this.isFolha = raf.readByte() == (byte)'#';
-        this.qtdElementos = raf.readShort();
-        
-        if(!this.isFolha) {
-            this.left = raf.readInt();
-            this.right = raf.readInt();
-            for(int i = 0; i < ordem-1; i++) {
-                this.filhos[i] = raf.readInt();
-                this.ids[i] = raf.readInt();
-            }
-            this.filhos[ordem-1] = raf.readInt();
-        }else{
-            for(int i = 0; i < ordem-1; i++) {
-                this.ids[i] = raf.readInt();
-                this.posicoes[i] = raf.readLong();
-            }
-        }
-        
+    public void addNumber(byte[] arr, int n, int pos){
+        arr[pos] = (byte)(n);
+        arr[pos+1] = (byte)(n >> 8);
+        arr[pos+2] = (byte)(n >> 16);
+        arr[pos+3] = (byte)(n >> 24);
     }
 
-    public void salvar(RandomAccessFile raf, int ordem) throws Exception {
-        raf.seek(this.pos);
-        raf.writeByte(this.isFolha ? (byte)'#' : (byte)' ');
-        raf.writeShort(this.qtdElementos);
-        
-        if(!this.isFolha) {
-            raf.writeInt(this.left);
-            raf.writeInt(this.right);
-            for(int i = 0; i < ordem-1; i++) {
-                raf.writeInt(this.filhos[i]);
-                raf.writeInt(this.ids[i]);
-            }
-            raf.writeInt(this.filhos[ordem-1]);
-        }else{
-            for(int i = 0; i < ordem-1; i++) {
-                raf.writeInt(this.ids[i]);
-                raf.writeLong(this.posicoes[i]);
-            }
-        }
+    public void addNumber(byte[] arr, long n, int pos){
+        arr[pos] = (byte)(n);
+        arr[pos+1] = (byte)(n >> 8);
+        arr[pos+2] = (byte)(n >> 16);
+        arr[pos+3] = (byte)(n >> 24);
+        arr[pos+4] = (byte)(n >> 32);
+        arr[pos+5] = (byte)(n >> 40);
+        arr[pos+6] = (byte)(n >> 48);
+        arr[pos+7] = (byte)(n >> 56);
     }
 
-    public static void splitPagina(Pagina pai, Pagina filho){
-        int indiceMeio = pai.qtdElementos / 2;
-        Pagina novaPagina = new Pagina(pai.filhos.length);
-        novaPagina.isFolha = filho.isFolha;
-        novaPagina.qtdElementos = (short)(pai.qtdElementos - indiceMeio - 1);
-        for(int i = 0; i < novaPagina.qtdElementos; i++){
-            novaPagina.ids[i] = pai.ids[indiceMeio + i + 1];
-            novaPagina.posicoes[i] = pai.posicoes[indiceMeio + i + 1];
-        }
-        if(!filho.isFolha){
-            for(int i = 0; i <= novaPagina.qtdElementos; i++){
-                novaPagina.filhos[i] = pai.filhos[indiceMeio + i + 1];
-            }
-        }
-        pai.qtdElementos = (short)indiceMeio;
-        for(int i = pai.qtdElementos; i < pai.filhos.length; i++){
-            pai.filhos[i] = -1;
-        }
-        for(int i = pai.qtdElementos; i < pai.ids.length; i++){
-            pai.ids[i] = -1;
-            pai.posicoes[i] = -1;
-        }
-        for(int i = pai.qtdElementos; i < novaPagina.filhos.length; i++){
-            novaPagina.filhos[i] = -1;
-        }
-        if(pai.isFolha){
-            novaPagina.left = filho.pos;
-            novaPagina.right = filho.right;
-            filho.right = novaPagina.pos;
-        }
-    }
-
-
-
-    public long[] inserir(int id, long pos, RandomAccessFile raf, int ordem) throws Exception{
-        if(this.isFolha){
-            if(this.qtdElementos < ordem - 1){
-                int i = 0;
-                while(i < this.qtdElementos && this.ids[i] < id){
-                    i++;
-                }
-                for(int j = this.qtdElementos; j > i; j--){
-                    this.ids[j] = this.ids[j-1];
-                    this.posicoes[j] = this.posicoes[j-1];
-                }
-                this.ids[i] = id;
-                this.posicoes[i] = pos;
-                this.qtdElementos++;
-                this.salvar(raf, ordem);
-                return null;
-            }
-            
-            
-        }
-
+    public byte[] toByteArray(){
         int i = 0;
-        while(i < this.qtdElementos && this.ids[i] < id){
-            i++;
-        }
-        raf.seek(this.filhos[i]);
-        Pagina pagina = new Pagina(raf, ordem);
-        long[] res = pagina.inserir(id, pos, raf, ordem);
-        if(res == null){
-            return null;
-        }
-        if(this.qtdElementos < ordem - 1){
-            for(int j = this.qtdElementos; j > i; j--){
-                this.ids[j] = this.ids[j-1];
-                this.filhos[j+1] = this.filhos[j];
-            }
-            this.ids[i] = pagina.ids[0];
-            this.filhos[i+1] = pagina.pos;
-            this.qtdElementos++;
-            this.salvar(raf, ordem);
-            return null;
+        byte[] b = new byte[150];
+        b[i++] = nElementos;
+        b[i++] = (byte)(isFolha ? 1 : 0);
+        addNumber(b, filhos[0], i);
+        i += 8;
+
+        for(int j = 0; j < 7; j++){
+            addNumber(b, chaves[j], i);
+            i += 4;
+            addNumber(b, posicoes[j], i);
+            i += 8;
+            addNumber(b, filhos[j+1], i);
+            i += 8;
         }
         
-        int indiceMeio = this.qtdElementos / 2;
-        Pagina novaPagina = new Pagina(ordem);
-        novaPagina.isFolha = false;
-        novaPagina.qtdElementos = (short)(this.qtdElementos - indiceMeio - 1);
-        for(int j = 0; j < novaPagina.qtdElementos; j++){
-            novaPagina.ids[j] = this.ids[indiceMeio + j + 1];
-            novaPagina.filhos[j] = this.filhos[indiceMeio + j + 1];
-        }
-        novaPagina.filhos[novaPagina.qtdElementos] = this.filhos[this.qtdElementos];
-        this.qtdElementos = (short)indiceMeio;
-        novaPagina.salvar(raf, ordem);
-        this.salvar(raf, ordem);
-        long[] ret = new long[2];
-        ret[0] = novaPagina.ids[0];
-        ret[1] = novaPagina.pos;
-        return ret;
+        return b;
     }
 
-    public String toString(){
-        String str = "";
-        str += "IsFolha: " + this.isFolha + "\n";
-        str += "Pos: " + this.pos + "\n";
-        str += "Left: " + this.left + "\n";
-        str += "Right: " + this.right + "\n";
-        str += "QtdElementos: " + this.qtdElementos + "\n";
-        str += "Filhos: ";
-        for(int i = 0; i < this.filhos.length; i++){
-            if(this.filhos[i]!=-1) str += this.filhos[i] + " ";
+    public boolean isCheia(){
+        return nElementos == 7;
+    }
+
+    public int readInt(byte[] b, int pos){
+        return (b[pos] & 0xFF) | ((b[pos+1] & 0xFF) << 8) | ((b[pos+2] & 0xFF) << 16) | ((b[pos+3] & 0xFF) << 24);
+    }
+
+    public long readLong(byte[] b, int pos){
+        return (b[pos] & 0xFF) | ((b[pos+1] & 0xFF) << 8) | ((b[pos+2] & 0xFF) << 16) | ((b[pos+3] & 0xFF) << 24) | ((b[pos+4] & 0xFF) << 32) | ((b[pos+5] & 0xFF) << 40) | ((b[pos+6] & 0xFF) << 48) | ((b[pos+7] & 0xFF) << 56);
+    }
+
+    public static Pagina fromByteArray(byte[] b){
+        Pagina p = new Pagina();
+        int i = 0;
+        p.nElementos = b[i++];
+        p.isFolha = b[i++] == 1;
+        
+        p.filhos[0] = p.readLong(b, i);
+        i += 8;
+
+        for(int j = 0; j < p.nElementos; j++){
+            p.chaves[j] = p.readInt(b, i);
+            i += 4;
+            p.posicoes[j] = p.readLong(b, i);
+            i += 8;
+            p.filhos[j+1] = p.readLong(b, i);
+            i += 8;
         }
-        str += "\n";
-        str += "Ids: ";
-        for(int i = 0; i < this.ids.length; i++){
-            if(this.ids[i]!=-1) str += this.ids[i] + " ";
+
+        return p;
+    }
+
+    public int inserirElemento(int chave, long posicao){
+        if(isCheia()){
+            System.out.println("Pagina cheia");
+            return -1;
         }
-        str += "\n";
-        str += "Posicoes: ";
-        for(int i = 0; i < this.posicoes.length; i++){
-            if(this.posicoes[i]!=-1) str += this.posicoes[i] + " ";
+        int i = nElementos;
+        while(i > 0 && chaves[i-1] > chave){
+            chaves[i] = chaves[i-1];
+            posicoes[i] = posicoes[i-1];
+            filhos[i+1] = filhos[i];
+            i--;
         }
-        str += "\n";
-        return str;
+        chaves[i] = chave;
+        posicoes[i] = posicao;
+        nElementos++;
+
+        return i;
+    }
+
+    public void print(){
+        System.out.println("nElementos: "+nElementos);
+        System.out.println("isFolha: "+isFolha);
+        System.out.println("filhos[0]: "+filhos[0]);
+
+        for(int i = 0; i < 7; i++){
+            System.out.println("chave: "+chaves[i]);
+            System.out.println("posicao: "+posicoes[i]);
+            System.out.println("filhos["+(i+1)+"]: "+filhos[i+1]);
+        }
+    }
+
+    public static void main(String[] args) {
+        Pagina p = new Pagina();
+        for(int i = 0; i < 7; i++){
+            p.chaves[i] = i;
+            p.posicoes[i] = i*100;
+            p.filhos[i] = i;
+            p.nElementos++;
+        }
+        System.out.println("nelementos: "+p.nElementos);
+        byte[] b = p.toByteArray();
+        Pagina p2 = Pagina.fromByteArray(b);
+        System.out.println("nelementos: "+p2.nElementos);
+        for(int i = 0; i < 7; i++){
+            System.out.println(p2.chaves[i]);
+            System.out.println(p2.posicoes[i]);
+            System.out.println(p2.filhos[i]);
+        }
     }
 }

@@ -1,127 +1,215 @@
-import java.util.ArrayList;
+package arvore;
 
-class ParIdEndereco {
-    int id;
-    long enderecoArquivo;
-
-    public ParIdEndereco(int id, long endereco) {
-        this.id = id;
-        this.enderecoArquivo = endereco;
-    }
-}
-
-class NoArvoreB {
-    ArrayList<ParIdEndereco> pares;
-    ArrayList<NoArvoreB> filhos;
-    boolean eFolha;
-
-    public NoArvoreB(boolean folha) {
-        pares = new ArrayList<>();
-        filhos = new ArrayList<>();
-        eFolha = folha;
-    }
-}
+import java.io.RandomAccessFile;
 
 public class ArvoreB {
-    private NoArvoreB raiz;
+    public static final int ORDEM = 8;
+    public static final int TAMANHO_PAGINA = 150;
+    long raizPos;
+    RandomAccessFile raf;
 
-    public ArvoreB() {
-        raiz = new NoArvoreB(true);
+    public ArvoreB(){
+        raizPos = -1;
+        raf = null;
     }
 
-    public void inserir(int id, long endereco) {
-        NoArvoreB r = raiz;
-        if (r.pares.size() == 7) { // Ordem da árvore é fixa em 8, então 7 é o máximo antes de dividir
-            NoArvoreB s = new NoArvoreB(false);
-            raiz = s;
-            s.filhos.add(r);
-            dividirFilho(s, 0);
-            inserirNaoCheio(s, id, endereco);
-        } else {
-            inserirNaoCheio(r, id, endereco);
+    public ArvoreB(String arq) throws Exception{
+        raf = new RandomAccessFile(arq, "rw");
+        raizPos = 8;
+        if(raf.length() == 0){
+            raf.writeLong(raizPos);
+            raf.write(new Pagina().toByteArray());
+        }else{
+            raizPos = raf.readLong();
         }
     }
 
-    private void inserirNaoCheio(NoArvoreB x, int id, long endereco) {
-        int i = x.pares.size() - 1;
-        if (x.eFolha) {
-            x.pares.add(new ParIdEndereco(id, endereco));
-            while (i >= 0 && id < x.pares.get(i).id) {
-                x.pares.set(i + 1, x.pares.get(i));
-                i--;
+    public void start(String arq) throws Exception{
+        raf = new RandomAccessFile(arq, "rw");
+        raizPos = 8;
+        raf.setLength(0);
+        raf.seek(0);
+        raf.writeLong(raizPos);
+        raf.write(new Pagina().toByteArray());
+    }
+
+    public byte[] readPagina(long pos) throws Exception{
+        byte[] b = new byte[TAMANHO_PAGINA];
+        raf.seek(pos);
+        raf.read(b);
+        return b;
+    }
+
+    public void writePagina(long pos, Pagina p) throws Exception{
+        raf.seek(pos);
+        raf.write(p.toByteArray());
+    }
+
+    public void writePaginaEnd(Pagina p) throws Exception{
+        raf.seek(raf.length());
+        raf.write(p.toByteArray());
+    }
+
+
+
+    public Dupla inserir(int chave, long posicao, long posPagina) throws Exception{
+        Pagina p = Pagina.fromByteArray(readPagina(posPagina));
+        if(p.isFolha){
+            if(!p.isCheia()){
+                //folha que cabe mais elementos
+                p.inserirElemento(chave, posicao);
+                raf.seek(posPagina);
+                raf.write(p.toByteArray());
+                return null;
             }
-            x.pares.set(i + 1, new ParIdEndereco(id, endereco));
-        } else {
-            while (i >= 0 && id < x.pares.get(i).id) {
-                i--;
+            //folha que nao cabe mais elementos
+            Pagina nova = new Pagina();
+            Dupla[] duplas = new Dupla[p.nElementos+1];
+            for(int i = 0; i < p.nElementos; i++){
+                duplas[i] = new Dupla(p.chaves[i], p.posicoes[i]);
             }
-            i++;
-            if (x.filhos.get(i).pares.size() == 7) { // Ordem da árvore é fixa em 8, então 7 é o máximo antes de dividir
-                dividirFilho(x, i);
-                if (id > x.pares.get(i).id)
-                    i++;
+            duplas[p.nElementos] = new Dupla(chave, posicao);
+            Dupla.sort(duplas);
+            for(int i = 0; i < (ORDEM)/2; i++){
+                p.chaves[i] = duplas[i].chave;
+                p.posicoes[i] = duplas[i].posicao;
             }
-            inserirNaoCheio(x.filhos.get(i), id, endereco);
+            p.nElementos = (ORDEM)/2;
+            nova.isFolha = true;
+            nova.nElementos = (ORDEM-1)/2;
+            for(int i = 0; i < (ORDEM-1)/2; i++){
+                nova.chaves[i] = duplas[i+(ORDEM)/2+1].chave;
+                nova.posicoes[i] = duplas[i+(ORDEM)/2+1].posicao;
+            }
+            
+            nova.filhos[0] = p.filhos[0];
+            for(int i = 0; i < (ORDEM-1)/2; i++){
+                nova.filhos[i+1] = 0;
+            }
+            writePagina(posPagina, p);
+            writePaginaEnd(nova);
+
+            return new Dupla(duplas[(ORDEM)/2].chave, duplas[(ORDEM)/2].posicao);
         }
-    }
 
-    private void dividirFilho(NoArvoreB x, int i) {
-        NoArvoreB z = new NoArvoreB(x.filhos.get(i).eFolha);
-        NoArvoreB y = x.filhos.get(i);
-        x.filhos.add(i + 1, z);
-        x.pares.add(i, y.pares.get(6)); // Dividir a última chave do nó cheio
-        z.pares.addAll(y.pares.subList(7, 14)); // Ordem da árvore é fixa em 8, então 7 é o máximo antes de dividir
-        y.pares.subList(6, 14).clear(); // Ordem da árvore é fixa em 8, então 7 é o máximo antes de dividir
-        if (!y.eFolha) {
-            z.filhos.addAll(y.filhos.subList(8, 15)); // Ordem da árvore é fixa em 8, então 8 é o máximo antes de dividir
-            y.filhos.subList(7, 15).clear(); // Ordem da árvore é fixa em 8, então 8 é o máximo antes de dividir
-        }
-    }
-
-    public boolean buscar(int id) {
-        return buscar(raiz, id);
-    }
-
-    private boolean buscar(NoArvoreB x, int id) {
+        //nao é folha
         int i = 0;
-        while (i < x.pares.size() && id > x.pares.get(i).id) {
+        while(i < p.nElementos && chave > p.chaves[i]){
             i++;
         }
-        if (i < x.pares.size() && id == x.pares.get(i).id) {
+        Dupla d = inserir(chave, posicao, p.filhos[i]);
+        if(d == null){
+            return null;
+        }
+
+        if(!p.isCheia()){
+            //pagina que cabe mais elementos
+            int pos = p.inserirElemento(d.chave, d.posicao);
+            p.filhos[pos+1] = raf.length() - TAMANHO_PAGINA;
+            raf.seek(posPagina);
+            raf.write(p.toByteArray());
+
+            return null;
+        }
+
+        //pagina que nao cabe mais elementos
+        Dupla[] duplas = new Dupla[p.nElementos+1];
+        for(int j = 0; j < p.nElementos; j++){
+            duplas[j] = new Dupla(p.chaves[j], p.posicoes[j]);
+        }
+        duplas[p.nElementos] = d;
+        Dupla.sort(duplas);
+        Pagina nova = new Pagina();
+        for(int j = 0; j < (ORDEM)/2; j++){
+            p.chaves[j] = duplas[j].chave;
+            p.posicoes[j] = duplas[j].posicao;
+        }
+        p.nElementos = (ORDEM)/2;
+        for(int j = 0; j < (ORDEM-1)/2; j++){
+            nova.chaves[j] = duplas[j+(ORDEM)/2+1].chave;
+            nova.posicoes[j] = duplas[j+(ORDEM)/2+1].posicao;
+        }
+        nova.nElementos = (ORDEM-1)/2;
+        nova.isFolha = false;
+        nova.filhos[0] = p.filhos[(ORDEM-1)/2+1];
+        for(int j = 0; j < (ORDEM-1)/2; j++){
+            nova.filhos[j+1] = raf.length() - TAMANHO_PAGINA;
+        }
+        writePagina(posPagina, p);
+        writePaginaEnd(nova);
+
+        return new Dupla(duplas[(ORDEM)/2].chave, duplas[(ORDEM)/2].posicao);
+    }
+
+    public void inserir(int chave, long posicao) throws Exception{
+        Dupla d = inserir(chave, posicao, raizPos);
+        if(d == null){
+            return;
+        }
+
+        Pagina nova = new Pagina();
+        nova.isFolha = false;
+        nova.nElementos = 1;
+        nova.chaves[0] = d.chave;
+        nova.posicoes[0] = d.posicao;
+        nova.filhos[0] = raizPos;
+        nova.filhos[1] = raf.length() - TAMANHO_PAGINA;
+        writePaginaEnd(nova);
+        raizPos = raf.length() - TAMANHO_PAGINA;
+        raf.seek(0);
+        raf.writeLong(raizPos);
+    }
+
+    public void printAll() throws Exception{
+        raf.seek(8);
+        while(raf.getFilePointer() < raf.length()){
+            System.out.println("Pos: " + raf.getFilePointer());
+            Pagina p = Pagina.fromByteArray(readPagina(raf.getFilePointer()));
+            p.print();
+            System.out.println("----");
+            System.out.println();
+        }
+    }
+
+    public boolean buscar(int chave) throws Exception{
+        return buscar(chave, raizPos);
+    }
+
+    public boolean buscar(int chave, long pos) throws Exception{
+        Pagina p = Pagina.fromByteArray(readPagina(pos));
+        if(p.isFolha){
+            for(int i = 0; i < p.nElementos; i++){
+                if(p.chaves[i] == chave){
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        int i = 0;
+        while(i < p.nElementos && chave > p.chaves[i]){
+            i++;
+        }
+        if(p.chaves[i] == chave){
             return true;
         }
-        if (x.eFolha) {
-            return false;
-        } else {
-            return buscar(x.filhos.get(i), id);
-        }
+        return buscar(chave, p.filhos[i]);
     }
 
     public static void main(String[] args) {
-        ArvoreB arvoreB = new ArvoreB();
-        arvoreB.inserir(1, 1000);
-        arvoreB.inserir(3, 2000);
-        arvoreB.inserir(7, 3000);
-        arvoreB.inserir(10, 4000);
-        arvoreB.inserir(11, 5000);
-        arvoreB.inserir(13, 6000);
-        arvoreB.inserir(14, 7000);
-        arvoreB.inserir(15, 8000);
-        arvoreB.inserir(18, 9000);
-        arvoreB.inserir(16, 10000);
-        arvoreB.inserir(19, 11000);
-        arvoreB.inserir(24, 12000);
-        arvoreB.inserir(25, 13000);
-        arvoreB.inserir(26, 14000);
-        arvoreB.inserir(21, 15000);
-        arvoreB.inserir(4, 16000);
-        arvoreB.inserir(5, 17000);
-        arvoreB.inserir(20, 18000);
-        arvoreB.inserir(22, 19000);
-        arvoreB.inserir(2, 20000);
-        System.out.println(arvoreB.buscar(20)); // Saída: true
-        System.out.println(arvoreB.buscar(21)); // Saída: true
-        System.out.println(arvoreB.buscar(5));  // Saída: true
-        System.out.println(arvoreB.buscar(0));  // Saída: false
+        ArvoreB arvore = new ArvoreB();
+        try{
+            arvore.start("arvore.dat");
+            for(int i = 1; i <= 43; i++){
+                arvore.inserir(i, i*100);
+            }
+            arvore.printAll();
+
+            for(int i = 1; i <= 43; i++){
+                System.out.println(i+": "+arvore.buscar(i));
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
     }
 }
