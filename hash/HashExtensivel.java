@@ -222,7 +222,6 @@ public class HashExtensivel {
     }
 
     public void remover(int chave) throws Exception{
-        //a função deve remover a chave e o endereço associado a ela. caso o bucket fique vazio, ele deve ser removido e o indice deve ser atualizado
         int bucketAddress = getBucketAddress(chave);
         hashRaf.seek(bucketAddress);
         int pLocal = hashRaf.readInt();

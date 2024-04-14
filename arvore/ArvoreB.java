@@ -475,30 +475,4 @@ public class ArvoreB {
 
         return getDuplaPosterior(chave, p.filhos[i]);
     }
-
-    
-
-    public static void main(String[] args) {
-        ArvoreB arvore = new ArvoreB();
-        try{
-            arvore.start("arvore.dat");
-            for(int i = 1; i <= 43; i++){
-                arvore.inserir(i, i*100);
-            }
-            
-            
-
-            arvore.remover(1);
-            arvore.remover(2);
-            arvore.remover(3);
-            
-            arvore.printAll();
-
-            for(int i = 1; i <= 43; i++){
-                System.out.println(i+": "+arvore.buscar(i));
-            }
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-    }
 }

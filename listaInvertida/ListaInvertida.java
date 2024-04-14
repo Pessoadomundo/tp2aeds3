@@ -180,30 +180,4 @@ public class ListaInvertida {
             remover(id, words[i].toLowerCase());
         }
     }
-
-    public static void main(String[] args) {
-        try{
-            ListaInvertida li = new ListaInvertida();
-            li.start("listaInvertida.dat", 30);
-            li.inserir(1, "teste");
-            li.inserir(2, "teste");
-            li.inserir(3, "teste");
-
-            for(int i=1;i<=101;i++){
-                li.inserir(i, "sexo");
-            }
-
-            li.remover(95, "sexo");
-
-            int[] res = li.buscar("sexo");
-
-            for(int i = 0; i < res.length; i++){
-                System.out.println(res[i]);
-            }
-            
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-
-    }
 }
