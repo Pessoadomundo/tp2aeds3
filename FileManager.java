@@ -2,19 +2,22 @@ import java.io.RandomAccessFile;
 import java.util.function.Predicate;
 
 import hash.HashExtensivel;
-import listaInvertida.ListaInvertida; 
+import listaInvertida.ListaInvertida;
+import arvore.ArvoreB;
 
 public class FileManager {
     private RandomAccessFile raf;
     private HashExtensivel he;
     private ListaInvertida li1;
     private ListaInvertida li2;
+    private ArvoreB arvore;
 
     public FileManager(){
         this.raf = null;
         he = null;
         li1 = null;
         li2 = null;
+        arvore = null;
     }
 
     public FileManager(String path) throws Exception{
@@ -22,6 +25,7 @@ public class FileManager {
         he = new HashExtensivel("hash.dat", "indice.dat", 1, 60);
         li1 = new ListaInvertida("li1.dat", 30);
         li2 = new ListaInvertida("li2.dat", 30);
+        arvore = new ArvoreB("arvore.dat");
     }
 
     /**
@@ -34,6 +38,8 @@ public class FileManager {
         this.li2 = new ListaInvertida();
         this.li1.start("li1.dat", 30);
         this.li2.start("li2.dat", 30);
+        this.arvore = new ArvoreB();
+        this.arvore.start("arvore.dat");
         raf.setLength(0);
         raf.seek(0);
         raf.writeInt(0);
@@ -49,6 +55,7 @@ public class FileManager {
         this.he = new HashExtensivel("hash.dat", "indice.dat");
         this.li1 = new ListaInvertida("li1.dat", 30);
         this.li2 = new ListaInvertida("li2.dat", 30);
+        this.arvore = new ArvoreB("arvore.dat");
     }
 
     /**
@@ -113,6 +120,8 @@ public class FileManager {
         li1.inserirProduto(p.getId(), p.getName());
         li2.inserirProduto(p.getId(), p.getTerms());
 
+        arvore.inserir(p.getId(), pos);
+
         return lastId+1;
     }
     
@@ -159,6 +168,7 @@ public class FileManager {
                 he.remover(id);
                 li1.removerProduto(id, p.getName());
                 li2.removerProduto(id, p.getTerms());
+                arvore.remover(id);
                 raf.seek(pos);
                 raf.write(p.toByteArray());
                 return true;
@@ -360,5 +370,15 @@ public class FileManager {
             res[i] = findProdutoUsingHash(he, ids[i]);
         }
         return res;
+    }
+
+    public Produto getProdutoComArvore(int id) throws Exception{
+        long pos = arvore.buscar(id);
+        if(pos == -1){
+            return null;
+        }
+
+        raf.seek(pos);
+        return readElement();
     }
 }

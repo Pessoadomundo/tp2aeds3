@@ -106,6 +106,33 @@ public class Pagina{
         return i;
     }
 
+    public void removerElemento(int chave){
+        int i = 0;
+        while(i < nElementos && chaves[i] != chave){
+            i++;
+        }
+        if(i == nElementos){
+            System.out.println("Elemento nao encontrado");
+            return;
+        }
+        while(i < nElementos-1){
+            chaves[i] = chaves[i+1];
+            posicoes[i] = posicoes[i+1];
+            filhos[i+1] = filhos[i+2];
+            i++;
+        }
+        nElementos--;
+    }
+
+    public boolean contains(int chave){
+        for(int i = 0; i < nElementos; i++){
+            if(chaves[i] == chave){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void print(){
         System.out.println("nElementos: "+nElementos);
         System.out.println("isFolha: "+isFolha);

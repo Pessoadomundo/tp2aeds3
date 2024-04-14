@@ -212,7 +212,8 @@ public class JQL {
         "4 - Excluir produto\n" +
         "5 - Atualizar produto\n" +
         "6 - Pesquisar produtos\n" +
-        "7 - Parar"
+        "7 - Buscar elemento utilizando Arvore B\n" +
+        "8 - Parar"
       );
 
       nextAction = Integer.parseInt(sc.nextLine());
@@ -437,8 +438,19 @@ public class JQL {
           
           break;
           case 7:
-          fm.close();
+          System.out.println("Digite o id do produto que deseja buscar");
+          int id3 = Integer.parseInt(sc.nextLine());
+          Produto p3 = fm.getProdutoComArvore(id3);
+          if (p3 != null) {
+            System.out.println(p3.toString());
+          } else {
+            System.out.println("Produto não encontrado");
+          }
           break;
+          case 8:
+          fm.close();
+          sc.close();
+          return;
         default:
           break;
       }
